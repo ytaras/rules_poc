@@ -27,20 +27,18 @@ class RulesSpec extends Specification with ScalaCheck {
     (a: Int) => Rule.pure(a).unsafe(notRead, notRead, notRead) === a
   }
   val pMap = Prop.forAll { (a: Int, b: Int) =>
-    Rule.pure(a)
+    a.pureRule[Unit, Unit, Unit]
       .map(_ * b).unsafe(notRead, notRead, notRead) === a * b
   }
   val pFlatMap = Prop.forAll { (a: Int, b: Int) =>
     val r = for {
-      in1 <- Rule.pure[Nothing, Nothing, Nothing, Int](a)
-      in2 <- Rule.pure[Nothing, Nothing, Nothing, Int](b)
+      in1 <- a.pureRule[Unit, Unit, Unit]
+      in2 <- b.pureRule[Unit, Unit, Unit]
     } yield in1 * in2
     r.unsafe(notRead, notRead, notRead) === a * b
   }
   val pAp = Prop.forAll { (a: Int, b: Int) =>
-    new FunctionalRuleSyntax[Nothing, Nothing, Nothing, Int, Int](
-      Rule.pure[Nothing, Nothing, Nothing, Int => Int](_ + a)
-    ).ap(Rule.pure[Nothing, Nothing, Nothing, Int](b))
+    addLambda(a).pureRule[Unit, Unit, Unit].ap(b.pureRule)
       .unsafe(notRead, notRead, notRead) === a + b
   }
 
