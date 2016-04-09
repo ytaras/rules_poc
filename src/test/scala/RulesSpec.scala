@@ -1,3 +1,4 @@
+import Rule._
 import org.scalacheck.Prop
 import org.specs2.{ScalaCheck, Specification}
 
@@ -5,20 +6,15 @@ import org.specs2.{ScalaCheck, Specification}
   * Created by ytaras on 4/9/16.
   */
 class RulesSpec extends Specification with ScalaCheck {
+
   val pInput = Prop.forAll { (a: Int, b: Int) =>
-    Rule.fromInput[Int, Nothing, Nothing, Int] {
-      _ + a
-    }.unsafe(b, notRead, notRead) === a + b
+    addLambda(a).inputRule.unsafe(b, notRead, notRead) === a + b
   }
   val pState = Prop.forAll { (a: Int, b: Int) =>
-    Rule.fromState[Nothing, Int, Nothing, Int] {
-      _ + a
-    }.unsafe(notRead, b, notRead) === a + b
+    addLambda(a).stateRule.unsafe(notRead, b, notRead) === a + b
   }
   val pParam = Prop.forAll { (a: Int, b: Int) =>
-    Rule.fromParam[Nothing, Nothing, Int, Int] {
-      _ + a
-    }.unsafe(notRead, notRead, b) === a + b
+    addLambda(a).paramRule.unsafe(notRead, notRead, b) === a + b
   }
   val pAll = Prop.forAll { (a: Int, b: Int, c: Int) =>
     Rule.fromPure[Int, Int, Int, Int] {
@@ -39,7 +35,6 @@ class RulesSpec extends Specification with ScalaCheck {
     } yield in1 * in2
     r.unsafe(notRead, notRead, notRead) === a * b
   }
-
   val pAp = Prop.forAll { (a: Int, b: Int) =>
     import Rule._
     new FunctionalRuleSyntax[Nothing, Nothing, Nothing, Int, Int](
@@ -47,6 +42,8 @@ class RulesSpec extends Specification with ScalaCheck {
     ).ap(Rule.pure[Nothing, Nothing, Nothing, Int](b))
       .unsafe(notRead, notRead, notRead) === a + b
   }
+
+  def addLambda(a: Int) = (b: Int) => a + b
 
   def is =
     s2"""

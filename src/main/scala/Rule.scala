@@ -25,20 +25,6 @@ case class Rule[In, St, Params, +Out](run: (=> In, => St, => Params) => Try[Out]
 
 object Rule {
   // TODO Deal with type params
-  def fromInput[I, S, P, O](f: I => O): Rule[I, S, P, O] =
-    fromPure((i, _, _) => f(i))
-
-  def fromPure[A, B, C, D](f: (=> A, => B, => C) => D): Rule[A, B, C, D] = Rule {
-    (a, b, c) => Try {
-      f(a, b, c)
-    }
-  }
-
-  def fromState[I, S, P, O](f: S => O): Rule[I, S, P, O] =
-    fromPure((_, s, _) => f(s))
-
-  def fromParam[I, S, P, O](f: P => O): Rule[I, S, P, O] =
-    fromPure((_, _, p) => f(p))
 
   def toMap[S, I, P, K, V](m: scala.collection.immutable.Map[K, Rule[S, I, P, V]]): Rule[S, I, P, Map[K, V]] = {
     val rulesSeq: scala.collection.immutable.Iterable[Rule[S, I, P, (K, V)]] =
@@ -52,10 +38,28 @@ object Rule {
   def pure[I, S, P, O](v: => O): Rule[I, S, P, O] =
     fromPure((_, _, _) => v)
 
+  def fromPure[A, B, C, D](f: (=> A, => B, => C) => D): Rule[A, B, C, D] = Rule {
+    (a, b, c) => Try {
+      f(a, b, c)
+    }
+  }
+
   implicit class FunctionalRuleSyntax[I, S, P, O, B](r: Rule[I, S, P, O => B]) {
     def ap(b: Rule[I, S, P, O]): Rule[I, S, P, B] =
       r.flatMap { f => b.map(f) }
   }
+
+  implicit class FunctionSyntax[V, O](f: V => O) {
+    def inputRule[S, P]: Rule[V, S, P, O] =
+      fromPure((i, _, _) => f(i))
+
+    def stateRule[I, P]: Rule[I, V, P, O] =
+      fromPure((_, s, _) => f(s))
+
+    def paramRule[I, S]: Rule[I, S, V, O] =
+      fromPure((_, _, p) => f(p))
+  }
+
 }
 
 
