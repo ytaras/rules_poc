@@ -40,6 +40,11 @@ class RulesSpec extends Specification with ScalaCheck {
     r.run(notRead, notRead, notRead) === a * b
   }
 
+  val pAp = Prop.forAll { (a: Int, b: Int) =>
+    Rule.pure[Int => Int](_ + a).ap(Rule.pure(b))
+      .run(notRead, notRead, notRead) === a + b
+  }
+
   def is =
     s2"""
      Rules use input: $pInput
@@ -51,6 +56,7 @@ class RulesSpec extends Specification with ScalaCheck {
      Can return: $pPure
      Can map: $pMap
      Can flatMap: $pFlatMap
+     Can ap: $pAp
     """
 
   //noinspection NotImplementedCode

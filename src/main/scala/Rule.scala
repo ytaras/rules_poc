@@ -22,5 +22,12 @@ object Rule {
 
   def pure[A](v: => A): Rule[Any, Any, Any, A] =
     Rule { (_, _, _) => v }
+
+  implicit class FunctionalRuleSyntax[A, B](r: Rule[Any, Any, Any, A => B]) {
+    def ap(b: Rule[Any, Any, Any, A]): Rule[Any, Any, Any, B] = Rule {
+      (i, s, p) => r.run(i, s, b).apply(b.run(i, s, b))
+    }
+  }
 }
+
 
