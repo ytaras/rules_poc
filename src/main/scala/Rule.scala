@@ -10,40 +10,32 @@ case class Rule[In, St, Params, +Out](run: (=> In, => St, => Params) => Try[Out]
     Rule { (a, b, c) => run(a, b, c).map(f) }
 
   def flatMap[BOut](f: Out => Rule[In, St, Params, BOut]): Rule[In, St, Params, BOut] = Rule {
-    (a, b, c) => run(a, b, c).map(f).flatMap(_.run(a, b, c))
+    (a, b, c) => for {
+      r1 <- run(a, b, c)
+      newRule = f(r1)
+      newRes <- newRule.run(a, b, c)
+    } yield newRes
   }
 
 }
 
 object Rule {
   def fromInput[A, B](f: A => B): Rule[A, Any, Any, B] =
-    Rule { (a, _, _) => Try {
-      f(a)
-    }
-    }
+    fromPure((i, _, _) => f(i))
   def fromState[A, B](f: A => B): Rule[Any, A, Any, B] =
-    Rule { (_, a, _) => Try {
-      f(a)
-    }
-    }
-  def fromParam[A, B](f: A => B): Rule[Any, Any, A, B] =
-    Rule { (_, _, a) => Try {
-      f(a)
-    }
-    }
+    fromPure((_, s, _) => f(s))
 
-  def pure[A](v: => A): Rule[Any, Any, Any, A] =
-    Rule { (_, _, _) => Try {
-      v
-    }
-    }
-
-  def fromPure[A, B, C, D](f: (A, B, C) => D): Rule[A, B, C, D] = Rule {
+  def fromPure[A, B, C, D](f: (=> A, => B, => C) => D): Rule[A, B, C, D] = Rule {
     (a, b, c) => Try {
       f(a, b, c)
     }
   }
 
+  def fromParam[A, B](f: A => B): Rule[Any, Any, A, B] =
+    fromPure((_, _, p) => f(p))
+
+  def pure[A](v: => A): Rule[Any, Any, Any, A] =
+    fromPure((_, _, _) => v)
 
   implicit class FunctionalRuleSyntax[A, B](r: Rule[Any, Any, Any, A => B]) {
     def ap(b: Rule[Any, Any, Any, A]): Rule[Any, Any, Any, B] =
