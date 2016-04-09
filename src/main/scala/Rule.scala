@@ -1,3 +1,6 @@
+import scala.collection.generic.CanBuildFrom
+import scala.collection.mutable
+import scala.language.higherKinds
 import scala.util.Try
 
 /**
@@ -26,13 +29,25 @@ case class Rule[In, St, Params, +Out](run: (=> In, => St, => Params) => Try[Out]
 object Rule {
   // TODO Deal with type params
 
-  def toMap[S, I, P, K, V](m: scala.collection.immutable.Map[K, Rule[S, I, P, V]]): Rule[S, I, P, Map[K, V]] = {
-    val rulesSeq: scala.collection.immutable.Iterable[Rule[S, I, P, (K, V)]] =
-      m.map { case (k, r) => r.map(k -> _) }
-    val emptyMapRule: Rule[S, I, P, Map[K, V]] = Rule.pure(Map.empty)
-    rulesSeq.foldLeft(emptyMapRule) { (rM, rT) =>
-      rM.addWith[(K, V), Map[K, V]]((m, v) => m + v)(rT)
+  def toMap[S, I, P, K, V](m: Map[K, Rule[S, I, P, V]]): Rule[S, I, P, Map[K, V]] = {
+    val rulesSeq = m.map { case (k, r) => r.map(k -> _) }
+    sequence(rulesSeq).map(_.toMap)
+  }
+
+  def sequence[S, I, P, V, M[+ _] <: TraversableOnce[_]](s: M[Rule[S, I, P, V]])
+                                                        (implicit cbf: CanBuildFrom[M[Rule[S, I, P, V]], V, M[V]]): Rule[S, I, P, M[V]] = {
+    type MB = mutable.Builder[V, M[V]]
+    type Ru = Rule[S, I, P, V]
+    type RuMB = Rule[S, I, P, MB]
+    val builder = cbf.apply(s)
+    val acc = builder.pureRule[S, I, P]
+    def append(acc: RuMB, item: Ru): RuMB =
+      acc.addWith[V, MB](_ += _)(item)
+    val r = s.asInstanceOf[M[Ru]].foldLeft(acc) { (o, t) =>
+      // TODO - Figure out why i should cast
+      append(o, t.asInstanceOf[Ru])
     }
+    r.map(_.result())
   }
 
   def pure[I, S, P, O](v: => O): Rule[I, S, P, O] =
@@ -58,6 +73,13 @@ object Rule {
 
     def paramRule[I, S]: Rule[I, S, V, O] =
       fromPure((_, _, p) => f(p))
+  }
+
+  implicit class ValueSyntax[V](v: => V) {
+    def pureRule[I, S, P]: Rule[I, S, P, V] =
+      fromPure((_, _, _) => v)
+
+    def tryRule[I, S, P, O](implicit ev: V <:< Try[O]): Rule[I, S, P, O] = Rule((_, _, _) => ev(v))
   }
 
 }

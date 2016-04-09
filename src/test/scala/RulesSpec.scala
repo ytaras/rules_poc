@@ -2,6 +2,8 @@ import Rule._
 import org.scalacheck.Prop
 import org.specs2.{ScalaCheck, Specification}
 
+import scala.util.Try
+
 /**
   * Created by ytaras on 4/9/16.
   */
@@ -36,11 +38,14 @@ class RulesSpec extends Specification with ScalaCheck {
     r.unsafe(notRead, notRead, notRead) === a * b
   }
   val pAp = Prop.forAll { (a: Int, b: Int) =>
-    import Rule._
     new FunctionalRuleSyntax[Nothing, Nothing, Nothing, Int, Int](
       Rule.pure[Nothing, Nothing, Nothing, Int => Int](_ + a)
     ).ap(Rule.pure[Nothing, Nothing, Nothing, Int](b))
       .unsafe(notRead, notRead, notRead) === a + b
+  }
+
+  val pTry = Prop.forAll { (a: Try[Int]) =>
+    a.tryRule.run(???, ???, ???) === a
   }
 
   def addLambda(a: Int) = (b: Int) => a + b
@@ -51,6 +56,7 @@ class RulesSpec extends Specification with ScalaCheck {
      Rules use state: $pState
      Rules use params: $pParam
      Rules can use everything: $pAll
+     Rules can be build from Try: $pTry
 
      Rule is a monad:
      Can return: $pPure
