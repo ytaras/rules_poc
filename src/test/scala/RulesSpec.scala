@@ -6,17 +6,17 @@ import org.specs2.{ScalaCheck, Specification}
   */
 class RulesSpec extends Specification with ScalaCheck {
   val pInput = Prop.forAll { (a: Int, b: Int) =>
-    Rule.fromInput[Int, Int] {
+    Rule.fromInput[Int, Nothing, Nothing, Int] {
       _ + a
     }.unsafe(b, notRead, notRead) === a + b
   }
   val pState = Prop.forAll { (a: Int, b: Int) =>
-    Rule.fromState[Int, Int] {
+    Rule.fromState[Nothing, Int, Nothing, Int] {
       _ + a
     }.unsafe(notRead, b, notRead) === a + b
   }
   val pParam = Prop.forAll { (a: Int, b: Int) =>
-    Rule.fromParam[Int, Int] {
+    Rule.fromParam[Nothing, Nothing, Int, Int] {
       _ + a
     }.unsafe(notRead, notRead, b) === a + b
   }
@@ -34,14 +34,17 @@ class RulesSpec extends Specification with ScalaCheck {
   }
   val pFlatMap = Prop.forAll { (a: Int, b: Int) =>
     val r = for {
-      in1 <- Rule.pure(a)
-      in2 <- Rule.pure(b)
+      in1 <- Rule.pure[Nothing, Nothing, Nothing, Int](a)
+      in2 <- Rule.pure[Nothing, Nothing, Nothing, Int](b)
     } yield in1 * in2
     r.unsafe(notRead, notRead, notRead) === a * b
   }
 
   val pAp = Prop.forAll { (a: Int, b: Int) =>
-    Rule.pure[Int => Int](_ + a).ap(Rule.pure(b))
+    import Rule._
+    new FunctionalRuleSyntax[Nothing, Nothing, Nothing, Int, Int](
+      Rule.pure[Nothing, Nothing, Nothing, Int => Int](_ + a)
+    ).ap(Rule.pure[Nothing, Nothing, Nothing, Int](b))
       .unsafe(notRead, notRead, notRead) === a + b
   }
 
