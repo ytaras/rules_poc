@@ -42,8 +42,11 @@ class RulesSpec extends Specification with ScalaCheck {
       .unsafe(notRead, notRead, notRead) === a + b
   }
 
-  val pTry = Prop.forAll { (a: Try[Int]) =>
-    a.tryRule.run(???, ???, ???) === a
+  val pTry = Prop.forAll { (a: Option[Int]) =>
+    val t = Try {
+      a.get
+    }
+    t.tryRule.run(???, ???, ???) === t
   }
 
   def addLambda(a: Int) = (b: Int) => a + b
